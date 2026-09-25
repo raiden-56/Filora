@@ -1,0 +1,30 @@
+{
+  "name": "pdfly",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PDFly - all your PDF tools in one place. Merge, split, compress, convert, edit and organize PDFs.",
+  "workspaces": [
+    "packages/pdf-core",
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w packages/pdf-core && npm run build -w server && npm run build -w client",
+    "start": "npm run start -w server",
+    "typecheck": "npm run typecheck -w packages/pdf-core && npm run typecheck -w client && npm run typecheck -w server",
+    "test": "npm run test -w packages/pdf-core && npm run test -w server && npm run test -w client",
+    "test:e2e": "playwright test",
+    "lint": "npm run lint -w client && npm run lint -w server"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "concurrently": "^9.2.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
