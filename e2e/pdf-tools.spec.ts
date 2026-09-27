@@ -56,7 +56,7 @@ test.describe('PDF tools end-to-end', () => {
     expect(doc.getPage(0).getRotation().angle).toBe(90);
   });
 
-  test('compress via the server shows size comparison', async ({ page }) => {
+  test('compress in the browser shows size comparison', async ({ page }) => {
     await page.goto('/tools/compress-pdf');
     await uploadFiles(page, [{ name: 'doc.pdf', mimeType: 'application/pdf', buffer: await makePdf(3) }]);
     await expect(page.getByTestId('step-configure')).toBeVisible();
@@ -65,7 +65,7 @@ test.describe('PDF tools end-to-end', () => {
     await expect(page.getByText(/Reduced by/i)).toBeVisible();
   });
 
-  test('PDF to JPG via the server produces images', async ({ page }) => {
+  test('PDF to JPG in the browser produces images', async ({ page }) => {
     await page.goto('/tools/pdf-to-jpg');
     await uploadFiles(page, [{ name: 'doc.pdf', mimeType: 'application/pdf', buffer: await makePdf(2) }]);
     await expect(page.getByTestId('step-configure')).toBeVisible();
@@ -88,13 +88,26 @@ test.describe('PDF tools end-to-end', () => {
     await expectPdfDownload(page, 1);
   });
 
-  test('server rejects a fake PDF with a friendly error', async ({ request }) => {
-    const res = await request.post('/api/pdf/compress', {
-      multipart: { files: { name: 'fake.pdf', mimeType: 'application/pdf', buffer: Buffer.from('this is not a pdf') } },
-    });
-    expect(res.status()).toBe(400);
-    const body = await res.json();
-    expect(body.success).toBe(false);
-    expect(body.error.code).toBe('INVALID_FILE');
+  test('PDF to Word and PDF/A run entirely in the browser', async ({ page }) => {
+    await page.goto('/tools/pdf-to-word');
+    await uploadFiles(page, [{ name: 'doc.pdf', mimeType: 'application/pdf', buffer: await makePdf(2, 'Report') }]);
+    await expect(page.getByTestId('step-configure')).toBeVisible();
+    await page.getByTestId('primary-action').click();
+    await expect(page.getByTestId('result-screen')).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByTestId('download-card')).toContainText('.docx');
+
+    await page.goto('/tools/pdf-to-pdfa');
+    await uploadFiles(page, [{ name: 'doc.pdf', mimeType: 'application/pdf', buffer: await makePdf(1) }]);
+    await expect(page.getByTestId('step-configure')).toBeVisible();
+    await page.getByTestId('primary-action').click();
+    await expect(page.getByTestId('result-screen')).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId('pdfa-report')).toBeVisible();
+  });
+
+  test('a fake PDF is rejected with a friendly error before processing', async ({ page }) => {
+    await page.goto('/tools/compress-pdf');
+    await uploadFiles(page, [{ name: 'fake.pdf', mimeType: 'application/pdf', buffer: Buffer.from('this is not a pdf') }]);
+    await expect(page.getByRole('alert')).toContainText(/not a valid PDF/i);
+    await expect(page.getByTestId('step-upload')).toBeVisible();
   });
 });

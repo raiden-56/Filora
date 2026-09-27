@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
@@ -10,23 +10,6 @@ import PdfToWordTool from './PdfToWordTool';
 import PdfToPptTool from './PdfToPptTool';
 import PdfToExcelTool from './PdfToExcelTool';
 import PdfToPdfaTool from './PdfToPdfaTool';
-
-vi.mock('@/services/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/services/api')>();
-  return {
-    ...actual,
-    getServerCapabilities: vi.fn().mockResolvedValue({
-      libreoffice: true,
-      ghostscript: true,
-      qpdf: true,
-      tesseract: true,
-      puppeteer: true,
-      maxFileSizeMb: 50,
-      ocrLanguages: [{ code: 'eng', name: 'English' }],
-      fileTtlMinutes: 60,
-    }),
-  };
-});
 
 function renderTool(Component: ComponentType) {
   const store = createAppStore();
@@ -54,5 +37,6 @@ describe('Convert from PDF tools', () => {
     expect(screen.getByRole('heading', { level: 1, name: tool.name })).toBeInTheDocument();
     expect(screen.getByTestId('step-upload')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /choose pdf/i })).toBeInTheDocument();
+    expect(screen.getByText(/processed in your browser/i)).toBeInTheDocument();
   });
 });

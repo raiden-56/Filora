@@ -6,12 +6,12 @@ import ConfigureLayout from '@/components/ConfigureLayout';
 import { useToolWorkflow } from '@/hooks/useToolWorkflow';
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { TOOL_BY_ID } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
+import { compressPdf } from '@/engines/compress';
 import { useAppSelector } from '@/store/hooks';
 import { formatBytes } from '@/utils/format';
 import type { CompressionLevel } from '@/store/slices/settingsSlice';
+import { withSuffix } from '@pdfly/core';
 import PdfSummaryCard from '@/features/convert-from/PdfSummaryCard';
-import ServerToolNotice from '@/features/convert-from/ServerToolNotice';
 import { engineLabel, numberOf, stringOf, type ResultExtra } from '@/features/convert-from/resultMeta';
 
 const tool = TOOL_BY_ID.compress;
@@ -89,15 +89,19 @@ export default function CompressPdfTool() {
   const [level, setLevel] = useState<CompressionLevel>(workflow.settings.compressionLevel);
 
   const onCompress = useCallback(() => {
-    void workflow.run(
-      (ctx) =>
-        processViaServer(ctx, {
-          endpoint: '/pdf/compress',
-          fields: { level },
-          processingStage: 'Optimizing...',
-        }),
-      'Uploading...',
-    );
+    void workflow.run(async (ctx) => {
+      const input = ctx.files[0];
+      const bytes = await ctx.getBytes(input.id);
+      const originalSize = bytes.length;
+      const r = await compressPdf(bytes, { level, signal: ctx.signal, onProgress: (stage, f) => ctx.setStage(stage, f) });
+      const compressedSize = r.pdf.length;
+      const ratio = originalSize > 0 ? 1 - compressedSize / originalSize : 0;
+      return {
+        outputs: [{ name: withSuffix(input.name, '-compressed', 'pdf'), blob: new Blob([r.pdf as BlobPart], { type: 'application/pdf' }), mimeType: 'application/pdf' }],
+        extra: { originalSize, compressedSize, reductionPercent: Math.round(Math.max(0, ratio) * 100), level, engine: r.engine },
+        warnings: r.warnings,
+      };
+    }, 'Optimizing...');
   }, [workflow, level]);
 
   const selected = LEVELS.find((l) => l.value === level);
@@ -143,15 +147,15 @@ export default function CompressPdfTool() {
                   ))}
                 </ToggleButtonGroup>
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                  {level === 'low' && 'Keeps images close to the original. Mostly removes duplicate data and unused objects.'}
+                  {level === 'low' && 'Keeps images close to the original and re-saves the file with compact object streams.'}
                   {level === 'medium' && 'Downsamples images to screen resolution. Good balance for email and web.'}
                   {level === 'high' && 'Aggressively downsamples images. Best for text documents and previews.'}
+                  {' '}Compression works on embedded images; PDFs that are mostly text or vector graphics shrink less.
                 </Typography>
               </Box>
             }
           >
             <Stack spacing={2}>
-              <ServerToolNotice needs={['ghostscript']} message="Ghostscript is not installed on the server. The built-in optimizer will be used, which mainly recompresses images and removes unused data." />
               <PdfSummaryCard file={file}>
                 <Typography variant="body2" color="text.secondary">
                   Original size: <strong>{formatBytes(file.size)}</strong>

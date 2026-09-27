@@ -6,6 +6,7 @@ import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
 import InsertDriveFileRoundedIcon from '@mui/icons-material/InsertDriveFileRounded';
+import ImageRoundedIcon from '@mui/icons-material/ImageRounded';
 import { memo, useEffect, useState, type ReactNode } from 'react';
 import type { FileMeta } from '@/types';
 import { formatBytes } from '@/utils/format';
@@ -33,12 +34,25 @@ export interface FileCardProps {
 
 function ImagePreview({ file }: { file: FileMeta }) {
   const url = fileRegistry.objectUrl(file.id);
+  // Formats the browser cannot display (e.g. HEIC outside Safari) fall back to a labelled icon.
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <Box sx={{ textAlign: 'center', color: 'text.disabled', p: 1 }}>
+        <ImageRoundedIcon sx={{ fontSize: 40 }} />
+        <Typography variant="caption" display="block">
+          No preview
+        </Typography>
+      </Box>
+    );
+  }
   return (
     <Box
       component="img"
       src={url}
       alt={file.name}
       draggable={false}
+      onError={() => setFailed(true)}
       sx={{
         maxWidth: '100%',
         maxHeight: '100%',

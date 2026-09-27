@@ -6,11 +6,13 @@ import ConfigureLayout from '@/components/ConfigureLayout';
 import { useToolWorkflow } from '@/hooks/useToolWorkflow';
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { TOOL_BY_ID } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
+import { pdfToPptx } from '@/engines/pdfToPpt';
 import { useAppSelector } from '@/store/hooks';
+import { stripExtension, withSuffix } from '@pdfly/core';
 import PdfSummaryCard from './PdfSummaryCard';
-import ServerToolNotice from './ServerToolNotice';
 import { numberOf } from './resultMeta';
+
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
 const tool = TOOL_BY_ID['pdf-to-ppt'];
 
@@ -37,15 +39,16 @@ export default function PdfToPptTool() {
   const [dpi, setDpi] = useState(150);
 
   const onConvert = useCallback(() => {
-    void workflow.run(
-      (ctx) =>
-        processViaServer(ctx, {
-          endpoint: '/convert/pdf-to-ppt',
-          fields: { mode, dpi },
-          processingStage: 'Converting...',
-        }),
-      'Uploading...',
-    );
+    void workflow.run(async (ctx) => {
+      const input = ctx.files[0];
+      const bytes = await ctx.getBytes(input.id);
+      const r = await pdfToPptx(bytes, stripExtension(input.name), { mode, dpi, signal: ctx.signal, onProgress: (stage, f) => ctx.setStage(stage, f) });
+      return {
+        outputs: [{ name: withSuffix(input.name, '', 'pptx'), blob: r.blob, mimeType: PPTX_MIME, pageCount: r.slides }],
+        extra: { slides: r.slides },
+        warnings: r.warnings,
+      };
+    }, 'Converting...');
   }, [workflow, mode, dpi]);
 
   const slides = numberOf(workflow.result?.extra, 'slides');
@@ -106,7 +109,6 @@ export default function PdfToPptTool() {
             }
           >
             <Stack spacing={2}>
-              <ServerToolNotice />
               <PdfSummaryCard file={file} />
             </Stack>
           </ConfigureLayout>

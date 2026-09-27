@@ -54,7 +54,7 @@ export default function UploadDropzone({
     noKeyboard: true,
   });
 
-  const label = accept.includes('any') ? 'JPG, PNG, PDF, DOCX, XLSX, PPTX supported' : `${acceptLabel(accept)} supported`;
+  const label = accept.includes('any') ? 'JPG, PNG, HEIC, PDF, DOCX, XLSX, PPTX supported' : `${acceptLabel(accept)} supported`;
 
   return (
     <Box

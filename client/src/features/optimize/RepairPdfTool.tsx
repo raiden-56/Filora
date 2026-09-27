@@ -8,9 +8,9 @@ import ConfigureLayout from '@/components/ConfigureLayout';
 import { useToolWorkflow } from '@/hooks/useToolWorkflow';
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { TOOL_BY_ID } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
+import { repairPdf } from '@/engines/repair';
+import { withSuffix } from '@pdfly/core';
 import PdfSummaryCard from '@/features/convert-from/PdfSummaryCard';
-import ServerToolNotice from '@/features/convert-from/ServerToolNotice';
 import { engineLabel, numberOf, stringListOf, stringOf, type ResultExtra } from '@/features/convert-from/resultMeta';
 
 const tool = TOOL_BY_ID.repair;
@@ -71,8 +71,15 @@ export default function RepairPdfTool() {
 
   const onRepair = useCallback(() => {
     void workflow.run(async (ctx) => {
-      ctx.setStage('Analyzing PDF...', null);
-      return processViaServer(ctx, { endpoint: '/pdf/repair', processingStage: 'Repairing...' });
+      const input = ctx.files[0];
+      const bytes = await ctx.getBytes(input.id);
+      const r = await repairPdf(bytes, { signal: ctx.signal, onProgress: (stage, f) => ctx.setStage(stage, f) });
+      if (!r.pdf) throw { code: 'REPAIR_FAILED', message: 'Unable to repair this PDF. The file may be too damaged or is not a PDF.', details: r.notes.join('; ') };
+      return {
+        outputs: [{ name: withSuffix(input.name, '-repaired', 'pdf'), blob: new Blob([r.pdf as BlobPart], { type: 'application/pdf' }), mimeType: 'application/pdf', pageCount: r.pageCount }],
+        extra: { repaired: r.repaired, engine: r.engine, notes: r.notes, pageCount: r.pageCount, status: r.repaired ? 'repaired' : 'healthy' },
+        warnings: r.warnings,
+      };
     }, 'Analyzing PDF...');
   }, [workflow]);
 
@@ -101,7 +108,6 @@ export default function RepairPdfTool() {
             }
           >
             <Stack spacing={2}>
-              <ServerToolNotice />
               <PdfSummaryCard file={file} unreadableHint="Preview unavailable – the file could not be opened in the browser. That is expected for damaged PDFs; repair may still succeed." />
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>

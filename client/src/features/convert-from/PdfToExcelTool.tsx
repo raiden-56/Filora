@@ -6,11 +6,13 @@ import ConfigureLayout from '@/components/ConfigureLayout';
 import { useToolWorkflow } from '@/hooks/useToolWorkflow';
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { TOOL_BY_ID } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
+import { pdfToExcel } from '@/engines/pdfToExcel';
 import { useAppSelector } from '@/store/hooks';
+import { withSuffix } from '@pdfly/core';
 import PdfSummaryCard from './PdfSummaryCard';
-import ServerToolNotice from './ServerToolNotice';
 import { numberOf } from './resultMeta';
+
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 const tool = TOOL_BY_ID['pdf-to-excel'];
 
@@ -22,15 +24,16 @@ export default function PdfToExcelTool() {
   const [sheetPerPage, setSheetPerPage] = useState(true);
 
   const onConvert = useCallback(() => {
-    void workflow.run(
-      (ctx) =>
-        processViaServer(ctx, {
-          endpoint: '/convert/pdf-to-excel',
-          fields: { sheetPerPage },
-          processingStage: 'Detecting tables...',
-        }),
-      'Uploading...',
-    );
+    void workflow.run(async (ctx) => {
+      const input = ctx.files[0];
+      const bytes = await ctx.getBytes(input.id);
+      const r = await pdfToExcel(bytes, { sheetPerPage, signal: ctx.signal, onProgress: (stage, f) => ctx.setStage(stage, f) });
+      return {
+        outputs: [{ name: withSuffix(input.name, '', 'xlsx'), blob: r.blob, mimeType: XLSX_MIME }],
+        extra: { sheets: r.sheets, tablesFound: r.tablesFound },
+        warnings: r.warnings,
+      };
+    }, 'Detecting tables...');
   }, [workflow, sheetPerPage]);
 
   const extra = workflow.result?.extra;
@@ -91,7 +94,6 @@ export default function PdfToExcelTool() {
             }
           >
             <Stack spacing={2}>
-              <ServerToolNotice />
               <PdfSummaryCard file={file} />
               <Alert severity="info">Works best with PDFs that contain real text tables. Scanned tables need OCR first.</Alert>
             </Stack>

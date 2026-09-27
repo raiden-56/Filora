@@ -8,10 +8,10 @@ import ConfigureLayout from '@/components/ConfigureLayout';
 import { useToolWorkflow } from '@/hooks/useToolWorkflow';
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { TOOL_BY_ID } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
+import { pdfToPdfa } from '@/engines/pdfToPdfa';
 import { useAppSelector } from '@/store/hooks';
+import { withSuffix } from '@pdfly/core';
 import PdfSummaryCard from './PdfSummaryCard';
-import ServerToolNotice from './ServerToolNotice';
 import { booleanOf, engineLabel, objectOf, stringOf, type ResultExtra } from './resultMeta';
 
 const tool = TOOL_BY_ID['pdf-to-pdfa'];
@@ -102,15 +102,18 @@ export default function PdfToPdfaTool() {
   const [level, setLevel] = useState<PdfaLevel>('2b');
 
   const onConvert = useCallback(() => {
-    void workflow.run(
-      (ctx) =>
-        processViaServer(ctx, {
-          endpoint: '/convert/pdf-to-pdfa',
-          fields: { level },
-          processingStage: 'Converting to PDF/A...',
-        }),
-      'Uploading...',
-    );
+    void workflow.run(async (ctx) => {
+      const input = ctx.files[0];
+      const bytes = await ctx.getBytes(input.id);
+      ctx.setStage('Converting to PDF/A...', null);
+      const r = await pdfToPdfa(bytes, { level });
+      ctx.setStage('Validating...', null);
+      return {
+        outputs: [{ name: withSuffix(input.name, `-pdfa-${r.level}`, 'pdf'), blob: new Blob([r.pdf as BlobPart], { type: 'application/pdf' }), mimeType: 'application/pdf' }],
+        extra: { engine: r.engine, level: r.level, validation: r.validation },
+        warnings: r.warnings,
+      };
+    }, 'Converting to PDF/A...');
   }, [workflow, level]);
 
   const validation = objectOf(workflow.result?.extra, 'validation');
@@ -151,15 +154,15 @@ export default function PdfToPdfaTool() {
             }
           >
             <Stack spacing={2}>
-              <ServerToolNotice needs={['ghostscript']} message="Ghostscript is not installed on the server. The built-in converter embeds fonts and metadata, but some documents may not pass every PDF/A check." />
               <PdfSummaryCard file={file} />
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
                   What PDF/A does
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  PDF/A (ISO 19005) is a self-contained format for long-term archiving: fonts are embedded, colors are defined, encryption and external
-                  references are removed, and metadata is added. After converting, we run a set of checks and show you a validation report.
+                  PDF/A (ISO 19005) is a self-contained format for long-term archiving: colors are defined by an embedded sRGB profile, JavaScript
+                  and external references are removed, and identification metadata is added. After converting, we run a set of checks and show
+                  you a validation report. Fonts cannot be embedded in the browser, so documents that rely on non-embedded fonts are flagged.
                 </Typography>
               </Paper>
             </Stack>

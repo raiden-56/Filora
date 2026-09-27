@@ -7,11 +7,13 @@ import ConfigureLayout from '@/components/ConfigureLayout';
 import { useToolWorkflow } from '@/hooks/useToolWorkflow';
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { TOOL_BY_ID, toolPath } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
+import { pdfToWord } from '@/engines/pdfToWord';
 import { useAppSelector } from '@/store/hooks';
+import { stripExtension, withSuffix } from '@pdfly/core';
 import PdfSummaryCard from './PdfSummaryCard';
-import ServerToolNotice from './ServerToolNotice';
 import { engineLabel, stringOf } from './resultMeta';
+
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 const tool = TOOL_BY_ID['pdf-to-word'];
 
@@ -25,15 +27,16 @@ export default function PdfToWordTool() {
   const [mode, setMode] = useState<WordMode>('text');
 
   const onConvert = useCallback(() => {
-    void workflow.run(
-      (ctx) =>
-        processViaServer(ctx, {
-          endpoint: '/convert/pdf-to-word',
-          fields: { mode },
-          processingStage: 'Converting...',
-        }),
-      'Uploading...',
-    );
+    void workflow.run(async (ctx) => {
+      const input = ctx.files[0];
+      const bytes = await ctx.getBytes(input.id);
+      const r = await pdfToWord(bytes, stripExtension(input.name), { mode, signal: ctx.signal, onProgress: (stage, f) => ctx.setStage(stage, f) });
+      return {
+        outputs: [{ name: withSuffix(input.name, '', 'docx'), blob: r.blob, mimeType: DOCX_MIME, pageCount: r.pageCount }],
+        extra: { engine: r.engine },
+        warnings: r.warnings,
+      };
+    }, 'Converting...');
   }, [workflow, mode]);
 
   const engine = engineLabel(stringOf(workflow.result?.extra, 'engine'));
@@ -86,7 +89,6 @@ export default function PdfToWordTool() {
             }
           >
             <Stack spacing={2}>
-              <ServerToolNotice needs={['libreoffice']} message="LibreOffice is not installed on the server, so the built-in converter will be used. Text is preserved, but complex layouts may look different." />
               <PdfSummaryCard file={file} />
               <Alert severity="info">
                 Scanned PDFs contain no text layer, so the Word file would be empty. Run{' '}

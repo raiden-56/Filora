@@ -1,73 +1,51 @@
 import { Alert, Box, Stack, Typography } from '@mui/material';
 import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import ToolWorkflow from '@/components/ToolWorkflow';
 import ConfigureLayout from '@/components/ConfigureLayout';
 import FileList from '@/components/FileList';
 import { useToolWorkflow } from '@/hooks/useToolWorkflow';
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { TOOL_BY_ID } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
-import { getServerCapabilities, type ServerCapabilities } from '@/services/api';
+import { officeToPdf, type OfficeKind } from '@/engines/office';
 import { acceptLabel, dropzoneAccept } from '@/utils/file';
-
-// ------------------------------------------------------------------ capabilities (module cache)
-
-let capabilitiesPromise: Promise<ServerCapabilities | null> | null = null;
-
-/** Fetch server capabilities once per session; a failure resolves to null and is retried on the next mount. */
-function loadCapabilities(): Promise<ServerCapabilities | null> {
-  if (!capabilitiesPromise) {
-    capabilitiesPromise = getServerCapabilities().catch(() => {
-      capabilitiesPromise = null;
-      return null;
-    });
-  }
-  return capabilitiesPromise;
-}
-
-function useServerCapabilities(): ServerCapabilities | null | undefined {
-  // undefined = loading, null = unreachable
-  const [caps, setCaps] = useState<ServerCapabilities | null | undefined>(undefined);
-  useEffect(() => {
-    let active = true;
-    void loadCapabilities().then((c) => {
-      if (active) setCaps(c);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-  return caps;
-}
-
-// ------------------------------------------------------------------ shared tool
+import { withSuffix } from '@pdfly/core';
 
 export interface OfficeToPdfToolProps {
   toolId: 'word-to-pdf' | 'ppt-to-pdf' | 'excel-to-pdf';
-  endpoint: string;
+  kind: OfficeKind;
   /** e.g. "Word document", "presentation", "spreadsheet" */
   kindLabel: string;
 }
 
 /**
- * Shared implementation for the Office -> PDF tools. Files are uploaded to the server,
- * converted (LibreOffice when available) and the resulting PDFs are downloaded back.
+ * Shared implementation for the Office -> PDF tools. Every file is converted in the browser
+ * with the built-in converter (text, lists, tables and images; simplified layout).
  */
-export default function OfficeToPdfTool({ toolId, endpoint, kindLabel }: OfficeToPdfToolProps) {
+export default function OfficeToPdfTool({ toolId, kind, kindLabel }: OfficeToPdfToolProps) {
   const tool = TOOL_BY_ID[toolId];
   const workflow = useToolWorkflow(tool, { minFiles: 1 });
   useIncomingFiles(workflow);
   const { files } = workflow;
   const inputRef = useRef<HTMLInputElement>(null);
-  const caps = useServerCapabilities();
 
   const onConvert = useCallback(() => {
-    void workflow.run((ctx) => processViaServer(ctx, { endpoint, processingStage: 'Converting...' }), 'Uploading...');
-  }, [workflow, endpoint]);
+    void workflow.run(async (ctx) => {
+      const outputs = [];
+      const warnings = new Set<string>();
+      for (let i = 0; i < ctx.files.length; i++) {
+        const f = ctx.files[i];
+        ctx.setStage(ctx.files.length > 1 ? `Converting ${i + 1} of ${ctx.files.length}...` : 'Converting...', ctx.files.length > 1 ? i / ctx.files.length : null);
+        const bytes = await ctx.getBytes(f.id);
+        const r = await officeToPdf(bytes, f.name, kind, { signal: ctx.signal });
+        for (const w of r.warnings) warnings.add(ctx.files.length > 1 ? `${f.name}: ${w}` : w);
+        outputs.push({ name: withSuffix(f.name, '', 'pdf'), blob: new Blob([r.pdf as BlobPart], { type: 'application/pdf' }), mimeType: 'application/pdf' });
+      }
+      return { outputs, extra: { engine: 'js' }, warnings: [...warnings] };
+    }, 'Converting...');
+  }, [workflow, kind]);
 
   const plural = files.length === 1 ? '' : 's';
-  const ttl = caps?.fileTtlMinutes;
 
   return (
     <ToolWorkflow
@@ -76,7 +54,7 @@ export default function OfficeToPdfTool({ toolId, endpoint, kindLabel }: OfficeT
       resultTitle="Conversion complete"
       resultDescription={files.length > 1 ? 'Your PDFs are ready.' : 'Your PDF is ready.'}
       downloadLabel={files.length > 1 ? 'Download All (ZIP)' : 'Download PDF'}
-      processingHint="Complex documents with many pages or images can take up to a minute."
+      processingHint="Documents with many pages or images can take a moment."
       configure={
         <ConfigureLayout
           actionLabel="Convert to PDF"
@@ -90,7 +68,8 @@ export default function OfficeToPdfTool({ toolId, endpoint, kindLabel }: OfficeT
           options={
             <Stack spacing={1.5}>
               <Typography variant="body2" color="text.secondary">
-                Each {kindLabel} becomes one PDF that keeps the page layout of the original. Fonts that are not installed on the server are substituted.
+                Each {kindLabel} becomes one PDF with its text, headings, lists, tables and images. The original page layout, fonts and
+                colours are simplified because the conversion happens entirely in your browser.
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Supported: {acceptLabel(tool.accept)}.
@@ -99,16 +78,7 @@ export default function OfficeToPdfTool({ toolId, endpoint, kindLabel }: OfficeT
           }
         >
           <Stack spacing={2}>
-            <Alert severity="info">
-              Conversion happens securely on the server. Uploaded files and results are deleted automatically
-              {ttl ? ` after ${ttl} minutes` : ''}.
-            </Alert>
-            {caps && !caps.libreoffice && (
-              <Alert severity="warning">LibreOffice is not installed on the server – conversion uses a simplified engine, formatting may differ.</Alert>
-            )}
-            {caps === null && (
-              <Alert severity="warning">The server could not be reached right now. You can still try, but the conversion may fail.</Alert>
-            )}
+            <Alert severity="info">Conversion happens in your browser. Nothing is uploaded, and the files never leave your device.</Alert>
             <FileList
               files={files}
               variant="list"

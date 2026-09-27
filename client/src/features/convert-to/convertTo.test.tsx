@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,12 +8,7 @@ import { PAGE_SIZES } from '@pdfly/core';
 import { computeImagePlacement, contentBox, mmToPt, ptToMm, resolvePageDims } from './pageLayout';
 import JpgToPdfTool from './JpgToPdfTool';
 import HtmlToPdfTool from './HtmlToPdfTool';
-
-// The server tools ask /api/health for capabilities; never hit the network in tests.
-vi.mock('@/services/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/services/api')>();
-  return { ...actual, getServerCapabilities: vi.fn(() => Promise.reject(new Error('offline'))) };
-});
+import WordToPdfTool from './WordToPdfTool';
 
 function wrap(ui: ReactNode) {
   const store = createAppStore();
@@ -96,8 +91,17 @@ describe('JpgToPdfTool', () => {
   });
 });
 
+describe('WordToPdfTool', () => {
+  it('renders the upload step and explains that conversion happens in the browser', () => {
+    wrap(<WordToPdfTool />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Word to PDF' })).toBeInTheDocument();
+    expect(screen.getByTestId('step-upload')).toBeInTheDocument();
+    expect(screen.getByText(/processed in your browser/i)).toBeInTheDocument();
+  });
+});
+
 describe('HtmlToPdfTool', () => {
-  it('shows the three source tabs and the convert button without an upload', () => {
+  it('shows the three source tabs, the convert button and the browser print action', () => {
     wrap(<HtmlToPdfTool />);
     expect(screen.getByRole('heading', { level: 1, name: 'HTML to PDF' })).toBeInTheDocument();
     const tabs = screen.getByRole('tablist', { name: 'HTML source' });
@@ -105,6 +109,7 @@ describe('HtmlToPdfTool', () => {
     expect(within(tabs).getByRole('tab', { name: 'Upload file' })).toBeInTheDocument();
     expect(within(tabs).getByRole('tab', { name: 'From URL' })).toBeInTheDocument();
     expect(screen.getByTestId('primary-action')).toHaveTextContent('Convert to PDF');
+    expect(screen.getByRole('button', { name: 'Print with browser' })).toBeDisabled();
   });
 
   it('rejects an invalid URL with a validation message', () => {
@@ -124,11 +129,12 @@ describe('HtmlToPdfTool', () => {
     expect(screen.getByTestId('primary-action')).toBeEnabled();
   });
 
-  it('enables the convert button once HTML is pasted (Load sample)', () => {
+  it('enables the convert and print buttons once HTML is pasted (Load sample)', () => {
     wrap(<HtmlToPdfTool />);
     expect(screen.getByTestId('primary-action')).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Load sample' }));
     expect(screen.getByTestId('primary-action')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Print with browser' })).toBeEnabled();
     expect((screen.getByRole('textbox', { name: 'HTML code' }) as HTMLTextAreaElement).value).toContain('<html>');
   });
 });

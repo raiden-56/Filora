@@ -17,6 +17,7 @@ import {
   Typography,
 } from '@mui/material';
 import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
+import PrintRoundedIcon from '@mui/icons-material/PrintRounded';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import ToolWorkflow from '@/components/ToolWorkflow';
@@ -27,22 +28,17 @@ import { useToolWorkflow, type ToolWorkflow as Workflow } from '@/hooks/useToolW
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { useDebounce } from '@/hooks/useDebounce';
 import { TOOL_BY_ID } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
+import { fetchHtml, htmlToPdf, printHtml, type HtmlToPdfOptions } from '@/engines/htmlToPdf';
+import { fileRegistry } from '@/services/fileRegistry';
+import { withSuffix } from '@pdfly/core';
 
 const tool = TOOL_BY_ID['html-to-pdf'];
 
 type Source = 'paste' | 'file' | 'url';
 
-interface HtmlOptions {
-  pageSize: 'A4' | 'A3' | 'Letter' | 'Legal';
-  orientation: 'portrait' | 'landscape';
-  /** millimetres */
-  margin: number;
+interface HtmlOptions extends HtmlToPdfOptions {
   header: string;
   footer: string;
-  pageNumbers: boolean;
-  printBackground: boolean;
-  scale: number;
 }
 
 interface HtmlFormState {
@@ -111,11 +107,13 @@ interface HtmlFormProps {
   onChange: (patch: Partial<HtmlFormState>) => void;
   onOptions: (patch: Partial<HtmlOptions>) => void;
   onSubmit: () => void;
+  onPrint: () => void;
+  printing: boolean;
   /** whether the user tried to submit (shows validation for empty fields) */
   submitted: boolean;
 }
 
-function HtmlForm({ workflow, state, onChange, onOptions, onSubmit, submitted }: HtmlFormProps) {
+function HtmlForm({ workflow, state, onChange, onOptions, onSubmit, onPrint, printing, submitted }: HtmlFormProps) {
   const { files } = workflow;
   const file = files[0];
   const { source, html, url, options } = state;
@@ -169,7 +167,7 @@ function HtmlForm({ workflow, state, onChange, onOptions, onSubmit, submitted }:
       <TextField label="Header text" size="small" value={options.header} onChange={(e) => onOptions({ header: e.target.value })} slotProps={{ htmlInput: { maxLength: 500 } }} fullWidth />
       <TextField label="Footer text" size="small" value={options.footer} onChange={(e) => onOptions({ footer: e.target.value })} slotProps={{ htmlInput: { maxLength: 500 } }} fullWidth />
       <FormControlLabel control={<Switch checked={options.pageNumbers} onChange={(e) => onOptions({ pageNumbers: e.target.checked })} />} label="Page numbers in footer" />
-      <FormControlLabel control={<Switch checked={options.printBackground} onChange={(e) => onOptions({ printBackground: e.target.checked })} />} label="Print background graphics" />
+      <FormControlLabel control={<Switch checked={options.printBackground} onChange={(e) => onOptions({ printBackground: e.target.checked })} />} label="Print background graphics (browser print)" />
       <Box>
         <Typography id="html-scale-label" variant="body2" sx={{ fontWeight: 600 }}>
           Scale: {Math.round(options.scale * 100)}%
@@ -199,6 +197,11 @@ function HtmlForm({ workflow, state, onChange, onOptions, onSubmit, submitted }:
       actionIcon={<PictureAsPdfRoundedIcon />}
       actionDisabled={!canSubmit}
       onAction={onSubmit}
+      secondaryActions={
+        <Button variant="outlined" startIcon={<PrintRoundedIcon />} onClick={onPrint} disabled={!canSubmit || printing || source === 'url'} sx={{ minHeight: 44 }}>
+          {printing ? 'Opening print dialog…' : 'Print with browser'}
+        </Button>
+      }
       summary={summary}
       onBack={file ? workflow.reset : undefined}
       backLabel="Start over"
@@ -257,7 +260,7 @@ function HtmlForm({ workflow, state, onChange, onOptions, onSubmit, submitted }:
                       sx={{ width: '100%', height: 320, border: 1, borderColor: 'divider', borderRadius: 1, bgcolor: '#fff' }}
                     />
                     <Typography variant="caption" color="text.secondary">
-                      Scripts are disabled in the preview. The PDF is rendered on the server and may differ slightly.
+                      Scripts are disabled in the preview. "Print with browser" produces exactly this layout; "Convert to PDF" keeps the content in a simplified layout.
                     </Typography>
                   </Box>
                 )}
@@ -284,19 +287,22 @@ function HtmlForm({ workflow, state, onChange, onOptions, onSubmit, submitted }:
                   value={url}
                   onChange={(e) => onChange({ url: e.target.value })}
                   error={!!urlError}
-                  helperText={urlError ?? 'Public pages only. The server fetches the page and renders it to PDF.'}
+                  helperText={urlError ?? 'The page is fetched by your browser. Only sites that allow cross-origin access can be converted this way.'}
                   placeholder="https://example.com/article"
                   fullWidth
                   slotProps={{ htmlInput: { inputMode: 'url', autoCapitalize: 'none', autoCorrect: 'off' } }}
                 />
                 <Alert severity="info" variant="outlined">
-                  Pages behind a login and pages that block automated access cannot be converted.
+                  Most websites block browser-side fetching (CORS). If the conversion fails, open the page, save it as an HTML file and use the "Upload file" tab instead.
                 </Alert>
               </Stack>
             </Box>
           )}
         </Paper>
-        <Alert severity="info">Rendering happens securely on the server. Your content and the resulting PDF are deleted automatically.</Alert>
+        <Alert severity="info">
+          <strong>Convert to PDF</strong> creates a downloadable PDF in your browser with the text, headings, lists, tables and embedded images (CSS layout is simplified).{' '}
+          <strong>Print with browser</strong> opens your browser's print dialog for an exact copy of the page layout: choose "Save as PDF" there.
+        </Alert>
       </Stack>
     </ConfigureLayout>
   );
@@ -304,11 +310,28 @@ function HtmlForm({ workflow, state, onChange, onOptions, onSubmit, submitted }:
 
 // ------------------------------------------------------------------ tool
 
+async function readInputHtml(state: HtmlFormState, signal?: AbortSignal): Promise<{ html: string; name: string }> {
+  const { source, html, url } = state;
+  if (source === 'paste') return { html, name: 'document.pdf' };
+  if (source === 'url') {
+    const trimmed = url.trim();
+    let name = 'document.pdf';
+    try {
+      name = `${new URL(trimmed).hostname.replace(/[^a-z0-9.-]/gi, '_')}.pdf`;
+    } catch {
+      /* keep default */
+    }
+    return { html: await fetchHtml(trimmed, signal), name };
+  }
+  throw new Error('Upload an HTML file to convert.');
+}
+
 export default function HtmlToPdfTool() {
   const workflow = useToolWorkflow(tool, { minFiles: 1 });
   useIncomingFiles(workflow);
   const [state, setState] = useState<HtmlFormState>({ source: 'paste', html: '', url: '', options: DEFAULT_OPTIONS });
   const [submitted, setSubmitted] = useState(false);
+  const [printing, setPrinting] = useState(false);
 
   const onChange = useCallback((patch: Partial<HtmlFormState>) => setState((s) => ({ ...s, ...patch })), []);
   const onOptions = useCallback((patch: Partial<HtmlOptions>) => setState((s) => ({ ...s, options: { ...s.options, ...patch } })), []);
@@ -321,40 +344,60 @@ export default function HtmlToPdfTool() {
     hadFile.current = hasFile;
   }, [hasFile]);
 
+  const effectiveOptions = useCallback((): HtmlToPdfOptions => {
+    const { options } = state;
+    return { ...options, header: options.header.trim() || undefined, footer: options.footer.trim() || undefined };
+  }, [state]);
+
   const onSubmit = useCallback(() => {
     setSubmitted(true);
-    const { source, html, url, options } = state;
+    const { source, html, url } = state;
     if (source === 'paste' && !html.trim()) return;
     if (source === 'url' && validateUrl(url)) return;
     if (source === 'file' && !hasFile) return;
+    const opts = effectiveOptions();
 
-    const fields: Record<string, string | number | boolean | undefined> = {
-      pageSize: options.pageSize,
-      orientation: options.orientation,
-      margin: options.margin,
-      header: options.header.trim() || undefined,
-      footer: options.footer.trim() || undefined,
-      printBackground: options.printBackground,
-      pageNumbers: options.pageNumbers,
-      scale: options.scale,
-    };
-    if (source === 'paste') fields.html = html;
-    if (source === 'url') fields.url = url.trim();
+    void workflow.run(async (ctx) => {
+      let input: { html: string; name: string };
+      if (source === 'file') {
+        const f = ctx.files[0];
+        ctx.setStage('Reading file...', null);
+        input = { html: await ctx.getBlob(f.id).text(), name: withSuffix(f.name, '', 'pdf') };
+      } else {
+        if (source === 'url') ctx.setStage('Fetching page...', null);
+        input = await readInputHtml(state, ctx.signal);
+      }
+      ctx.setStage('Generating PDF...', null);
+      const r = await htmlToPdf(input.html, opts);
+      return {
+        outputs: [{ name: input.name, blob: new Blob([r.pdf as BlobPart], { type: 'application/pdf' }), mimeType: 'application/pdf' }],
+        extra: { engine: r.engine },
+        warnings: r.warnings,
+      };
+    }, source === 'url' ? 'Fetching page...' : 'Converting...');
+  }, [state, hasFile, workflow, effectiveOptions]);
 
-    void workflow.run(
-      (ctx) =>
-        processViaServer(ctx, {
-          endpoint: '/convert/html-to-pdf',
-          // No upload in paste/url mode: processViaServer would otherwise send every workflow file.
-          files: source === 'file' ? undefined : [],
-          fields,
-          processingStage: 'Converting...',
-        }),
-      source === 'file' ? 'Uploading...' : 'Converting...',
-    );
-  }, [state, hasFile, workflow]);
+  const onPrint = useCallback(() => {
+    setSubmitted(true);
+    const { source, html } = state;
+    let content: Promise<string>;
+    if (source === 'paste') {
+      if (!html.trim()) return;
+      content = Promise.resolve(html);
+    } else if (source === 'file') {
+      const f = workflow.files[0];
+      const blob = f ? fileRegistry.get(f.id) : undefined;
+      if (!blob) return;
+      content = blob.text();
+    } else return;
+    setPrinting(true);
+    void content
+      .then((h) => printHtml(h, effectiveOptions()))
+      .catch((err: unknown) => workflow.notify(err instanceof Error ? err.message : 'The print dialog could not be opened.', 'error'))
+      .finally(() => setPrinting(false));
+  }, [state, workflow, effectiveOptions]);
 
-  const form = <HtmlForm workflow={workflow} state={state} onChange={onChange} onOptions={onOptions} onSubmit={onSubmit} submitted={submitted} />;
+  const form = <HtmlForm workflow={workflow} state={state} onChange={onChange} onOptions={onOptions} onSubmit={onSubmit} onPrint={onPrint} printing={printing} submitted={submitted} />;
 
   return (
     <ToolWorkflow
@@ -365,7 +408,7 @@ export default function HtmlToPdfTool() {
       resultTitle="PDF ready"
       resultDescription="Your web content was rendered to PDF."
       downloadLabel="Download PDF"
-      processingHint="Pages with many images or web fonts can take a little longer."
+      processingHint="Pages with many images can take a little longer."
     />
   );
 }

@@ -115,7 +115,8 @@ export default function ToolWorkflow({
     <Container maxWidth={wide ? 'xl' : 'lg'} sx={{ py: { xs: 2.5, sm: 4 } }}>
       <Box sx={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
         {!hideSidebar && !wide && (
-          <Box sx={{ width: 240, flexShrink: 0, display: { xs: 'none', lg: 'block' } }}>
+          // Stretch to the full column height so the sticky menu inside has room to stay in place.
+          <Box sx={{ width: 240, flexShrink: 0, alignSelf: 'stretch', display: { xs: 'none', lg: 'block' } }}>
             <ToolSidebar currentToolId={tool.id} />
           </Box>
         )}
@@ -138,7 +139,7 @@ export default function ToolWorkflow({
               </Typography>
               <Chip
                 icon={<ShieldRoundedIcon />}
-                label={tool.clientSide ? 'Processed in your browser · files never leave your device' : 'Processed securely on the server · files auto-delete'}
+                label="Processed in your browser · files never leave your device"
                 size="small"
                 variant="outlined"
                 sx={{ mt: 1, color: 'text.secondary' }}

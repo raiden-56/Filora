@@ -10,10 +10,10 @@ import { useToolWorkflow, type ToolWorkflow as Workflow } from '@/hooks/useToolW
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { TOOL_BY_ID } from '@/constants/tools';
 import { OCR_LANGUAGES } from '@/constants/limits';
-import { processViaServer } from '@/services/serverProcess';
+import { ocrPdf } from '@/engines/ocr';
 import { useAppSelector } from '@/store/hooks';
+import { withSuffix } from '@pdfly/core';
 import PdfSummaryCard from '@/features/convert-from/PdfSummaryCard';
-import ServerToolNotice from '@/features/convert-from/ServerToolNotice';
 import { engineLabel, numberOf, stringListOf, stringOf, type ResultExtra } from '@/features/convert-from/resultMeta';
 
 const tool = TOOL_BY_ID.ocr;
@@ -116,15 +116,18 @@ export default function OcrPdfTool() {
   const [includeText, setIncludeText] = useState(true);
 
   const onRun = useCallback(() => {
-    void workflow.run(
-      (ctx) =>
-        processViaServer(ctx, {
-          endpoint: '/pdf/ocr',
-          fields: { languages, dpi, skipText, includeText },
-          processingStage: 'Recognizing text...',
-        }),
-      'Uploading...',
-    );
+    void workflow.run(async (ctx) => {
+      const input = ctx.files[0];
+      const bytes = await ctx.getBytes(input.id);
+      const r = await ocrPdf(bytes, { languages, dpi, skipText, signal: ctx.signal, onProgress: (stage, f) => ctx.setStage(stage, f) });
+      const outputs = [{ name: withSuffix(input.name, '-ocr', 'pdf'), blob: new Blob([r.pdf as BlobPart], { type: 'application/pdf' }), mimeType: 'application/pdf', pageCount: r.pageCount }];
+      if (includeText) outputs.push({ name: withSuffix(input.name, '-text', 'txt'), blob: new Blob([r.text], { type: 'text/plain' }), mimeType: 'text/plain', pageCount: r.pageCount });
+      return {
+        outputs,
+        extra: { engine: r.engine, languages, pagesProcessed: r.pagesProcessed, pagesSkipped: r.pagesSkipped, characters: r.characters, textPreview: r.textPreview },
+        warnings: r.warnings,
+      };
+    }, 'Analyzing...');
   }, [workflow, languages, dpi, skipText, includeText]);
 
   const pageCount = doc?.pageCount ?? 0;
@@ -195,9 +198,11 @@ export default function OcrPdfTool() {
             }
           >
             <Stack spacing={2}>
-              <ServerToolNotice />
               <PdfSummaryCard file={file} />
-              <Alert severity="warning">OCR may take a while: roughly 5–10 seconds per page depending on resolution and the number of languages. Keep this tab open.</Alert>
+              <Alert severity="warning">
+                OCR runs in your browser and may take a while: roughly 5–10 seconds per page depending on resolution, the number of languages and your device.
+                Language data (about 10–20 MB per language) is downloaded the first time and cached afterwards. Keep this tab open.
+              </Alert>
             </Stack>
           </ConfigureLayout>
         )

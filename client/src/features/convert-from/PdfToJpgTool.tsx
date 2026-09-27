@@ -1,20 +1,19 @@
-import { Alert, Box, Button, Card, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Slider, Stack, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material';
+import { Alert, Box, Button, FormControl, InputLabel, MenuItem, Select, Slider, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import ImageRoundedIcon from '@mui/icons-material/ImageRounded';
-import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ToolWorkflow from '@/components/ToolWorkflow';
+import ImageResultsGrid from '@/components/ImageResultsGrid';
 import ConfigureLayout from '@/components/ConfigureLayout';
 import PageGrid, { type GridPage } from '@/components/PageGrid';
 import PageSelectionInput from '@/components/PageSelectionInput';
-import { useToolWorkflow, type ToolWorkflow as Workflow } from '@/hooks/useToolWorkflow';
+import { useToolWorkflow } from '@/hooks/useToolWorkflow';
 import { useIncomingFiles } from '@/hooks/useIncomingFiles';
 import { pdfCacheKey, usePdfDocument } from '@/hooks/usePdfDocument';
 import { usePageSelection } from '@/hooks/usePageSelection';
 import { TOOL_BY_ID } from '@/constants/tools';
-import { processViaServer } from '@/services/serverProcess';
-import { outputRegistry } from '@/services/fileRegistry';
+import { pdfToImages } from '@/engines/pdfToImages';
 import { formatBytes } from '@/utils/format';
-import ServerToolNotice from './ServerToolNotice';
+import { stripExtension } from '@pdfly/core';
 
 const tool = TOOL_BY_ID['pdf-to-jpg'];
 
@@ -38,49 +37,6 @@ function estimateBytes(pages: { width: number; height: number }[], dpi: number, 
     total += pixels * bytesPerPixel;
   }
   return total;
-}
-
-function ImageResults({ workflow }: { workflow: Workflow }) {
-  const { outputs } = workflow;
-  if (!outputs.length) return null;
-  return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 2 }} data-testid="image-results">
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-        {outputs.length} image{outputs.length === 1 ? '' : 's'}
-      </Typography>
-      <Box role="list" aria-label="Converted images" sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
-        {outputs.map((o, i) => {
-          const url = outputRegistry.objectUrl(o.id);
-          return (
-            <Card key={o.id} role="listitem" variant="outlined" sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-              <Box sx={{ aspectRatio: '0.707', display: 'grid', placeItems: 'center', bgcolor: 'action.hover', borderRadius: 1.5, overflow: 'hidden' }}>
-                {url ? (
-                  <Box component="img" src={url} alt={`Image ${i + 1}: ${o.name}`} loading="lazy" sx={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }} />
-                ) : (
-                  <ImageRoundedIcon color="disabled" />
-                )}
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 0.5, minWidth: 0 }}>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography variant="caption" noWrap display="block" title={o.name} sx={{ fontWeight: 600 }}>
-                    {o.name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {formatBytes(o.size)}
-                  </Typography>
-                </Box>
-                <Tooltip title="Download">
-                  <IconButton size="small" aria-label={`Download ${o.name}`} onClick={() => workflow.downloadOutput(o.id)} sx={{ minWidth: 44, minHeight: 44 }}>
-                    <DownloadRoundedIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Card>
-          );
-        })}
-      </Box>
-    </Paper>
-  );
 }
 
 export default function PdfToJpgTool() {
@@ -148,15 +104,25 @@ export default function PdfToJpgTool() {
 
   const onConvert = useCallback(() => {
     const pages = mode === 'all' ? undefined : selectedPages;
-    void workflow.run(
-      (ctx) =>
-        processViaServer(ctx, {
-          endpoint: '/convert/pdf-to-jpg',
-          fields: { format, quality, dpi, pages },
-          processingStage: 'Rendering pages...',
-        }),
-      'Uploading...',
-    );
+    void workflow.run(async (ctx) => {
+      const input = ctx.files[0];
+      ctx.setStage('Rendering pages...', 0);
+      const bytes = await ctx.getBytes(input.id);
+      const r = await pdfToImages(bytes, {
+        format,
+        quality,
+        dpi,
+        pages,
+        signal: ctx.signal,
+        onProgress: (done, total) => ctx.setStage('Rendering pages...', done / total),
+      });
+      const base = stripExtension(input.name);
+      const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+      return {
+        outputs: r.files.map((f) => ({ name: `${base}-page-${f.page}.${format}`, blob: f.blob, mimeType })),
+        extra: { engine: r.engine, pages: r.files.length, dpi },
+      };
+    }, 'Rendering pages...');
   }, [workflow, mode, selectedPages, format, quality, dpi]);
 
   const count = effectivePages.length;
@@ -168,7 +134,7 @@ export default function PdfToJpgTool() {
       resultTitle="Conversion complete"
       resultDescription={workflow.outputs.length > 1 ? `${workflow.outputs.length} images are ready. Download them one by one or all at once as a ZIP.` : 'Your image is ready.'}
       downloadLabel={workflow.outputs.length > 1 ? 'Download All (ZIP)' : `Download ${format.toUpperCase()}`}
-      resultExtra={<ImageResults workflow={workflow} />}
+      resultExtra={<ImageResultsGrid workflow={workflow} />}
       configure={
         file && (
           <ConfigureLayout
@@ -252,7 +218,6 @@ export default function PdfToJpgTool() {
             }
           >
             <Stack spacing={2}>
-              <ServerToolNotice />
               {pdfError && <Alert severity="error">{pdfError}</Alert>}
               {!pdfError && (
                 <>

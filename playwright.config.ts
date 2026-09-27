@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const CLIENT_PORT = 5173;
-const SERVER_PORT = 4000;
 
 export default defineConfig({
   testDir: './e2e',
@@ -24,19 +23,10 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /navigation|jpg-to-pdf/ },
   ],
-  webServer: [
-    {
-      command: 'npm run dev -w server',
-      url: `http://localhost:${SERVER_PORT}/api/health`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-      env: { NODE_ENV: 'test', PORT: String(SERVER_PORT), CORS_ORIGINS: '*' },
-    },
-    {
-      command: 'npm run dev -w client',
-      url: `http://localhost:${CLIENT_PORT}`,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
-  ],
+  webServer: {
+    command: 'npm run dev -w client',
+    url: `http://localhost:${CLIENT_PORT}`,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
 });

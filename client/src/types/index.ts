@@ -1,4 +1,4 @@
-export type ToolCategoryId = 'organize' | 'optimize' | 'convert-to' | 'convert-from' | 'edit';
+export type ToolCategoryId = 'organize' | 'optimize' | 'convert-to' | 'convert-from' | 'edit' | 'image';
 
 export interface ToolCategory {
   id: ToolCategoryId;
@@ -8,7 +8,7 @@ export interface ToolCategory {
   color: string;
 }
 
-export type AcceptKind = 'pdf' | 'image' | 'word' | 'powerpoint' | 'excel' | 'html' | 'any';
+export type AcceptKind = 'pdf' | 'image' | 'jpg' | 'png' | 'heic' | 'word' | 'powerpoint' | 'excel' | 'html' | 'any';
 
 export interface ToolDefinition {
   id: string;
@@ -26,8 +26,6 @@ export interface ToolDefinition {
   maxFiles?: number;
   /** Search keywords */
   keywords: string[];
-  /** true if processed in the browser (fast, private) */
-  clientSide: boolean;
   /** CTA label for the main action */
   actionLabel: string;
 }
@@ -35,7 +33,6 @@ export interface ToolDefinition {
 export type WorkflowStep = 'upload' | 'configure' | 'processing' | 'done';
 
 export type ProcessingStage =
-  | 'Uploading...'
   | 'Analyzing...'
   | 'Processing...'
   | 'Converting...'
@@ -43,7 +40,6 @@ export type ProcessingStage =
   | 'Generating PDF...'
   | 'Recognizing text...'
   | 'Rendering pages...'
-  | 'Downloading result...'
   | 'Finalizing...';
 
 export interface FileMeta {
@@ -98,34 +94,4 @@ export interface AppError {
   code: string;
   message: string;
   details?: string;
-}
-
-export interface ApiSuccess<T> {
-  success: true;
-  data: T;
-  message?: string;
-}
-
-export interface ApiFailure {
-  success: false;
-  error: { code: string; message: string; details?: string };
-}
-
-export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
-
-export interface ServerFile {
-  id: string;
-  name: string;
-  size: number;
-  mimeType: string;
-  url: string;
-  pageCount?: number;
-  createdAt?: string;
-  expiresAt?: string;
-}
-
-export interface ServerProcessResult {
-  files: ServerFile[];
-  meta?: Record<string, unknown>;
-  warnings?: string[];
 }

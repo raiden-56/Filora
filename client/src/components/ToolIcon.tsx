@@ -21,6 +21,8 @@ import CropRoundedIcon from '@mui/icons-material/CropRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import BallotRoundedIcon from '@mui/icons-material/BallotRounded';
 import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
+import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded';
+import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 
 const ICONS: Record<string, React.ComponentType<SvgIconProps>> = {
   merge: CallMergeRoundedIcon,
@@ -45,6 +47,8 @@ const ICONS: Record<string, React.ComponentType<SvgIconProps>> = {
   edit: EditNoteRoundedIcon,
   forms: BallotRoundedIcon,
   pdf: PictureAsPdfRoundedIcon,
+  photo: PhotoCameraRoundedIcon,
+  swap: SwapHorizRoundedIcon,
 };
 
 export interface ToolIconProps extends SvgIconProps {

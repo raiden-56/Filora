@@ -15,8 +15,6 @@ export interface UiState {
   snackbars: SnackbarMessage[];
   /** resolved system preference, updated by a media query listener */
   systemPrefersDark: boolean;
-  /** true while a server call is in flight */
-  serverOnline: boolean | null;
 }
 
 const initialState: UiState = {
@@ -24,7 +22,6 @@ const initialState: UiState = {
   searchOpen: false,
   snackbars: [],
   systemPrefersDark: false,
-  serverOnline: null,
 };
 
 const uiSlice = createSlice({
@@ -55,9 +52,6 @@ const uiSlice = createSlice({
     setSystemPrefersDark: (state, action: PayloadAction<boolean>) => {
       state.systemPrefersDark = action.payload;
     },
-    setServerOnline: (state, action: PayloadAction<boolean | null>) => {
-      state.serverOnline = action.payload;
-    },
   },
 });
 
@@ -68,6 +62,5 @@ export const {
   showSnackbar,
   dismissSnackbar,
   setSystemPrefersDark,
-  setServerOnline,
 } = uiSlice.actions;
 export default uiSlice.reducer;

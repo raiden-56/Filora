@@ -1,4 +1,4 @@
-import type { ToolCategory, ToolDefinition, ToolCategoryId, AcceptKind } from '@/types';
+﻿import type { ToolCategory, ToolDefinition, ToolCategoryId, AcceptKind } from '@/types';
 
 export const CATEGORIES: ToolCategory[] = [
   {
@@ -36,6 +36,13 @@ export const CATEGORIES: ToolCategory[] = [
     description: 'Rotate, number, watermark, crop, annotate and fill forms.',
     color: '#DB2777',
   },
+  {
+    id: 'image',
+    name: 'Image Tools',
+    slug: 'image-tools',
+    description: 'Convert photos between HEIC, HEIF, JPG and PNG.',
+    color: '#7C3AED',
+  },
 ];
 
 export const TOOLS: ToolDefinition[] = [
@@ -52,7 +59,6 @@ export const TOOLS: ToolDefinition[] = [
     multiple: true,
     maxFiles: 50,
     keywords: ['merge', 'combine', 'join', 'concatenate', 'append'],
-    clientSide: true,
     actionLabel: 'Merge PDFs',
   },
   {
@@ -66,7 +72,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['split', 'separate', 'divide', 'range', 'extract'],
-    clientSide: true,
     actionLabel: 'Split PDF',
   },
   {
@@ -80,7 +85,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['remove', 'delete', 'pages'],
-    clientSide: true,
     actionLabel: 'Remove Pages',
   },
   {
@@ -94,7 +98,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['extract', 'pages', 'select', 'pick'],
-    clientSide: true,
     actionLabel: 'Extract Pages',
   },
   {
@@ -108,7 +111,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['organize', 'reorder', 'sort', 'arrange', 'rotate', 'duplicate', 'insert'],
-    clientSide: true,
     actionLabel: 'Save PDF',
   },
   {
@@ -123,7 +125,6 @@ export const TOOLS: ToolDefinition[] = [
     multiple: true,
     maxFiles: 100,
     keywords: ['scan', 'camera', 'photo', 'image', 'capture'],
-    clientSide: true,
     actionLabel: 'Create PDF',
   },
   // ---------------------------------------------------------------- Optimize
@@ -138,7 +139,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['compress', 'reduce', 'shrink', 'size', 'optimize', 'smaller'],
-    clientSide: false,
     actionLabel: 'Compress PDF',
   },
   {
@@ -152,7 +152,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['repair', 'fix', 'corrupt', 'damaged', 'broken', 'recover'],
-    clientSide: false,
     actionLabel: 'Repair PDF',
   },
   {
@@ -166,7 +165,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['ocr', 'text', 'recognize', 'scan', 'searchable'],
-    clientSide: false,
     actionLabel: 'Run OCR',
   },
   // ---------------------------------------------------------------- Convert to PDF
@@ -182,7 +180,6 @@ export const TOOLS: ToolDefinition[] = [
     multiple: true,
     maxFiles: 200,
     keywords: ['jpg', 'jpeg', 'png', 'image', 'photo', 'picture', 'to pdf'],
-    clientSide: true,
     actionLabel: 'Convert to PDF',
   },
   {
@@ -197,7 +194,6 @@ export const TOOLS: ToolDefinition[] = [
     multiple: true,
     maxFiles: 10,
     keywords: ['word', 'doc', 'docx', 'document', 'to pdf'],
-    clientSide: false,
     actionLabel: 'Convert to PDF',
   },
   {
@@ -212,7 +208,6 @@ export const TOOLS: ToolDefinition[] = [
     multiple: true,
     maxFiles: 10,
     keywords: ['powerpoint', 'ppt', 'pptx', 'slides', 'presentation', 'to pdf'],
-    clientSide: false,
     actionLabel: 'Convert to PDF',
   },
   {
@@ -227,7 +222,6 @@ export const TOOLS: ToolDefinition[] = [
     multiple: true,
     maxFiles: 10,
     keywords: ['excel', 'xls', 'xlsx', 'spreadsheet', 'sheet', 'to pdf'],
-    clientSide: false,
     actionLabel: 'Convert to PDF',
   },
   {
@@ -241,7 +235,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['html'],
     multiple: false,
     keywords: ['html', 'web', 'url', 'website', 'page', 'to pdf'],
-    clientSide: false,
     actionLabel: 'Convert to PDF',
   },
   // ---------------------------------------------------------------- Convert from PDF
@@ -256,7 +249,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['jpg', 'jpeg', 'png', 'image', 'picture', 'from pdf', 'export'],
-    clientSide: false,
     actionLabel: 'Convert to JPG',
   },
   {
@@ -270,7 +262,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['word', 'docx', 'doc', 'editable', 'from pdf'],
-    clientSide: false,
     actionLabel: 'Convert to Word',
   },
   {
@@ -284,7 +275,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['powerpoint', 'pptx', 'ppt', 'slides', 'from pdf'],
-    clientSide: false,
     actionLabel: 'Convert to PowerPoint',
   },
   {
@@ -298,7 +288,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['excel', 'xlsx', 'table', 'spreadsheet', 'from pdf'],
-    clientSide: false,
     actionLabel: 'Convert to Excel',
   },
   {
@@ -312,7 +301,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['pdfa', 'pdf/a', 'archive', 'archival', 'iso'],
-    clientSide: false,
     actionLabel: 'Convert to PDF/A',
   },
   // ---------------------------------------------------------------- Edit
@@ -327,7 +315,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['rotate', 'turn', 'orientation', 'landscape', 'portrait'],
-    clientSide: true,
     actionLabel: 'Rotate PDF',
   },
   {
@@ -341,7 +328,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['page numbers', 'numbering', 'number', 'footer', 'header'],
-    clientSide: true,
     actionLabel: 'Add Page Numbers',
   },
   {
@@ -355,7 +341,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['watermark', 'stamp', 'brand', 'logo', 'confidential'],
-    clientSide: true,
     actionLabel: 'Add Watermark',
   },
   {
@@ -369,7 +354,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['crop', 'trim', 'cut', 'margins'],
-    clientSide: true,
     actionLabel: 'Crop PDF',
   },
   {
@@ -383,7 +367,6 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['edit', 'annotate', 'draw', 'text', 'highlight', 'signature', 'sign', 'shape'],
-    clientSide: true,
     actionLabel: 'Save PDF',
   },
   {
@@ -397,8 +380,64 @@ export const TOOLS: ToolDefinition[] = [
     accept: ['pdf'],
     multiple: false,
     keywords: ['form', 'fill', 'field', 'checkbox', 'radio', 'dropdown', 'signature'],
-    clientSide: true,
     actionLabel: 'Save PDF',
+  },
+  // ---------------------------------------------------------------- Image tools
+  {
+    id: 'heic-to-jpg',
+    slug: 'heic-to-jpg',
+    name: 'HEIC to JPG',
+    description: 'Convert iPhone HEIC photos to JPG images that open everywhere.',
+    longDescription: 'Upload one or many HEIC photos (the default iPhone and iPad format) and get standard JPG files you can share, upload or edit anywhere.',
+    category: 'image',
+    icon: 'photo',
+    accept: ['heic'],
+    multiple: true,
+    maxFiles: 50,
+    keywords: ['heic', 'iphone', 'ios', 'apple', 'photo', 'jpg', 'jpeg', 'convert', 'image'],
+    actionLabel: 'Convert to JPG',
+  },
+  {
+    id: 'heif-to-jpg',
+    slug: 'heif-to-jpg',
+    name: 'HEIF to JPG',
+    description: 'Convert HEIF images from phones and cameras to JPG.',
+    longDescription: 'Turn HEIF (High Efficiency Image Format) pictures from Android phones, cameras and other devices into widely supported JPG files.',
+    category: 'image',
+    icon: 'photo',
+    accept: ['heic'],
+    multiple: true,
+    maxFiles: 50,
+    keywords: ['heif', 'hif', 'heic', 'camera', 'android', 'photo', 'jpg', 'jpeg', 'convert', 'image'],
+    actionLabel: 'Convert to JPG',
+  },
+  {
+    id: 'jpg-to-png',
+    slug: 'jpg-to-png',
+    name: 'JPG to PNG',
+    description: 'Convert JPG images to lossless PNG files.',
+    longDescription: 'Convert one or many JPG photos to PNG. PNG is lossless, so editing and re-saving the image no longer adds compression artefacts.',
+    category: 'image',
+    icon: 'swap',
+    accept: ['jpg'],
+    multiple: true,
+    maxFiles: 50,
+    keywords: ['jpg', 'jpeg', 'png', 'convert', 'image', 'lossless'],
+    actionLabel: 'Convert to PNG',
+  },
+  {
+    id: 'png-to-jpg',
+    slug: 'png-to-jpg',
+    name: 'PNG to JPG',
+    description: 'Convert PNG images to smaller JPG files.',
+    longDescription: 'Convert PNG screenshots and graphics to compact JPG files. Choose the quality and the colour used for transparent areas.',
+    category: 'image',
+    icon: 'swap',
+    accept: ['png'],
+    multiple: true,
+    maxFiles: 50,
+    keywords: ['png', 'jpg', 'jpeg', 'convert', 'image', 'smaller', 'compress'],
+    actionLabel: 'Convert to JPG',
   },
 ];
 
@@ -427,6 +466,9 @@ export function categoryPath(cat: ToolCategory | ToolCategoryId): string {
 export const ACCEPT_MAP: Record<AcceptKind, Record<string, string[]>> = {
   pdf: { 'application/pdf': ['.pdf'] },
   image: { 'image/jpeg': ['.jpg', '.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'] },
+  jpg: { 'image/jpeg': ['.jpg', '.jpeg'] },
+  png: { 'image/png': ['.png'] },
+  heic: { 'image/heic': ['.heic'], 'image/heif': ['.heif', '.hif'] },
   word: {
     'application/msword': ['.doc'],
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
@@ -451,11 +493,14 @@ export const ACCEPT_MAP: Record<AcceptKind, Record<string, string[]>> = {
 export const ACCEPT_LABEL: Record<AcceptKind, string> = {
   pdf: 'PDF',
   image: 'JPG, PNG, WEBP',
+  jpg: 'JPG, JPEG',
+  png: 'PNG',
+  heic: 'HEIC, HEIF',
   word: 'DOC, DOCX, ODT, RTF',
   powerpoint: 'PPT, PPTX, ODP',
   excel: 'XLS, XLSX, ODS, CSV',
   html: 'HTML',
-  any: 'JPG, PNG, PDF, DOCX, XLSX, PPTX',
+  any: 'JPG, PNG, HEIC, PDF, DOCX, XLSX, PPTX',
 };
 
 /** Search tools by query (name, description and keywords). */
@@ -465,7 +510,8 @@ export function searchTools(query: string): ToolDefinition[] {
   const terms = q.split(/\s+/);
   const scored = TOOLS.map((t) => {
     const hay = [t.name, t.description, ...t.keywords, CATEGORY_BY_ID[t.category].name].join(' ').toLowerCase();
-    let score = 0;
+    // The whole phrase in the name wins over scattered terms ("png to jpg" -> PNG to JPG, not JPG to PNG).
+    let score = t.name.toLowerCase().includes(q) ? 10 : 0;
     for (const term of terms) {
       if (t.name.toLowerCase().includes(term)) score += 5;
       if (t.keywords.some((k) => k.startsWith(term))) score += 3;

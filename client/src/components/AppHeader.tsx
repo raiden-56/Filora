@@ -32,11 +32,21 @@ import { setThemeMode } from '@/store/slices/settingsSlice';
 import { BRAND } from '@/theme';
 import { CATEGORIES, categoryPath } from '@/constants/tools';
 import ToolIcon from './ToolIcon';
+import type { ToolCategoryId } from '@/types';
+
+const CATEGORY_ICONS: Record<ToolCategoryId, string> = {
+  organize: 'organize',
+  optimize: 'compress',
+  'convert-to': 'image',
+  'convert-from': 'word',
+  edit: 'edit',
+  image: 'photo',
+};
 
 const NAV = [
   { label: 'Home', to: '/', icon: <HomeRoundedIcon /> },
   { label: 'All PDF Tools', to: '/tools', icon: <GridViewRoundedIcon /> },
-  ...CATEGORIES.map((c) => ({ label: c.name, to: categoryPath(c), icon: <ToolIcon name={c.id === 'organize' ? 'organize' : c.id === 'optimize' ? 'compress' : c.id === 'convert-to' ? 'image' : c.id === 'convert-from' ? 'word' : 'edit'} /> })),
+  ...CATEGORIES.map((c) => ({ label: c.name, to: categoryPath(c), icon: <ToolIcon name={CATEGORY_ICONS[c.id]} /> })),
   { label: 'My Files', to: '/my-files', icon: <FolderRoundedIcon /> },
   { label: 'Settings', to: '/settings', icon: <SettingsRoundedIcon /> },
 ];
@@ -44,7 +54,7 @@ const NAV = [
 function Logo() {
   return (
     <Box component={RouterLink} to="/" aria-label={`${BRAND.name} home`} sx={{ display: 'flex', alignItems: 'center', gap: 1, textDecoration: 'none', color: 'inherit' }}>
-      <Box component="img" src="/favicon.svg" alt="" width={32} height={32} sx={{ borderRadius: 2 }} />
+      <Box component="img" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={32} height={32} sx={{ borderRadius: 2 }} />
       <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
         {BRAND.name}
       </Typography>

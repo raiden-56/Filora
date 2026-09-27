@@ -1,6 +1,6 @@
 /**
- * Small helpers to read tool-specific `result.extra` values (which arrive untyped from the
- * server's `meta` object) without sprinkling casts through every result component.
+ * Small helpers to read tool-specific `result.extra` values (stored untyped in the workflow
+ * result) without sprinkling casts through every result component.
  */
 export type ResultExtra = Record<string, unknown>;
 
@@ -30,22 +30,15 @@ export function objectOf(extra: ResultExtra | undefined, key: string): ResultExt
 }
 
 const ENGINE_LABELS: Record<string, string> = {
-  libreoffice: 'LibreOffice',
-  ghostscript: 'Ghostscript',
-  qpdf: 'qpdf',
   'pdf-lib': 'pdf-lib',
   'pdfjs-rebuild': 'PDF.js rebuild',
   pdfjs: 'PDF.js',
-  pdftoppm: 'pdftoppm',
-  ocrmypdf: 'OCRmyPDF',
-  tesseract: 'Tesseract',
   'tesseract.js': 'Tesseract.js',
-  puppeteer: 'Chromium',
   js: 'Built-in converter',
   none: 'None',
 };
 
-/** Human readable name of a server engine id (e.g. "libreoffice" -> "LibreOffice"). */
+/** Human readable name of an engine id (e.g. "pdfjs" -> "PDF.js"). */
 export function engineLabel(engine: string | undefined): string | undefined {
   if (!engine) return undefined;
   return ENGINE_LABELS[engine] ?? engine;

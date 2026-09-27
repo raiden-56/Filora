@@ -1,4 +1,5 @@
 import { Box, List, ListItemButton, ListItemIcon, ListItemText, ListSubheader, alpha, useTheme } from '@mui/material';
+import { useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { CATEGORIES, TOOLS, toolPath } from '@/constants/tools';
 import ToolIcon from './ToolIcon';
@@ -10,12 +11,48 @@ export interface ToolSidebarProps {
   currentToolId?: string;
 }
 
-/** Vertical list of tools (desktop side navigation on tool pages). */
+/** Distance from the top of the viewport: the 64px app bar plus a 16px gap. */
+const STICKY_TOP = 80;
+
+/**
+ * Vertical list of tools (desktop side navigation on tool pages). It sticks below the app bar
+ * and scrolls on its own, so the page height follows the tool content, not this menu.
+ */
 export default function ToolSidebar({ category, currentToolId }: ToolSidebarProps) {
   const theme = useTheme();
+  const navRef = useRef<HTMLElement>(null);
   const cats = category ? CATEGORIES.filter((c) => c.id === category) : CATEGORIES;
+
+  // Bring the current tool into view inside the menu (without scrolling the page itself).
+  useEffect(() => {
+    const nav = navRef.current;
+    const active = nav?.querySelector<HTMLElement>('.Mui-selected');
+    if (!nav || !active) return;
+    const top = active.offsetTop - nav.offsetTop;
+    if (top < nav.scrollTop || top + active.offsetHeight > nav.scrollTop + nav.clientHeight) {
+      nav.scrollTop = Math.max(0, top - nav.clientHeight / 2 + active.offsetHeight / 2);
+    }
+  }, [currentToolId]);
+
   return (
-    <Box component="nav" aria-label="Tools" sx={{ position: 'sticky', top: 80 }}>
+    <Box
+      component="nav"
+      ref={navRef}
+      aria-label="Tools"
+      sx={{
+        position: 'sticky',
+        top: STICKY_TOP,
+        maxHeight: `calc(100vh - ${STICKY_TOP + 16}px)`,
+        overflowY: 'auto',
+        // Scrolling the menu never scrolls the page behind it.
+        overscrollBehavior: 'contain',
+        pr: 0.5,
+        scrollbarWidth: 'thin',
+        scrollbarColor: `${alpha(theme.palette.text.primary, 0.2)} transparent`,
+        '&::-webkit-scrollbar': { width: 6 },
+        '&::-webkit-scrollbar-thumb': { bgcolor: alpha(theme.palette.text.primary, 0.2), borderRadius: 3 },
+      }}
+    >
       {cats.map((c) => (
         <List key={c.id} dense subheader={<ListSubheader disableSticky sx={{ bgcolor: 'transparent', fontWeight: 700, color: c.color, lineHeight: '32px' }}>{c.name}</ListSubheader>} sx={{ mb: 1 }}>
           {TOOLS.filter((t) => t.category === c.id).map((t) => (

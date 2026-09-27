@@ -16,6 +16,8 @@ const FEATURED = ['merge', 'compress', 'jpg-to-pdf', 'pdf-to-word', 'split', 'ed
 /** Pick the most sensible tool for a set of dropped files. */
 export function suggestTool(files: File[]): string {
   const exts = files.map((f) => extensionOf(f.name));
+  if (exts.every((e) => e === '.heic')) return 'heic-to-jpg';
+  if (exts.every((e) => ['.heif', '.hif', '.heic'].includes(e))) return 'heif-to-jpg';
   if (exts.every((e) => ['.jpg', '.jpeg', '.png', '.webp'].includes(e))) return 'jpg-to-pdf';
   if (exts.every((e) => ['.doc', '.docx', '.odt', '.rtf'].includes(e))) return 'word-to-pdf';
   if (exts.every((e) => ['.ppt', '.pptx', '.odp'].includes(e))) return 'powerpoint-to-pdf';
@@ -72,7 +74,7 @@ export default function HomePage() {
             </Stack>
           </Stack>
           <Box sx={{ maxWidth: 760, mx: 'auto' }}>
-            <UploadDropzone accept={['any']} multiple onFiles={onFiles} title="Drop your files here" buttonLabel="Browse Files" hint="JPG, PNG, PDF, DOCX, XLSX, PPTX supported · We will pick the right tool for you" id="home-dropzone" />
+            <UploadDropzone accept={['any']} multiple onFiles={onFiles} title="Drop your files here" buttonLabel="Browse Files" hint="JPG, PNG, HEIC, PDF, DOCX, XLSX, PPTX supported · We will pick the right tool for you" id="home-dropzone" />
           </Box>
         </Container>
       </Box>
@@ -134,7 +136,7 @@ export default function HomePage() {
       <Container maxWidth="lg" sx={{ py: { xs: 5, sm: 7 } }}>
         <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' } }}>
           {[
-            { title: 'Private by design', body: 'Most tools run entirely in your browser. Files that need the server are deleted automatically after processing.' },
+            { title: 'Private by design', body: 'Every tool runs entirely in your browser. Your files are never uploaded anywhere and stay on your device.' },
             { title: 'Fast and simple', body: 'A clear three-step flow for every tool: upload, customize, download. No account, no watermark, no limits on the number of tasks.' },
             { title: 'Works everywhere', body: `${BRAND.name} is responsive and touch-friendly on phones, tablets and desktops, with full keyboard support.` },
           ].map((f) => (

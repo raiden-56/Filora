@@ -48,6 +48,9 @@ export function readBlobBytes(blob: Blob): Promise<Uint8Array> {
   });
 }
 
+/** ISO-BMFF major brands used by HEIC/HEIF still images (and image sequences such as bursts). */
+export const HEIF_BRANDS = new Set(['heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'hevm', 'hevs', 'mif1', 'msf1', 'mif2', 'heif']);
+
 export async function sniffMimeType(file: Blob): Promise<string | undefined> {
   const head = await readBlobBytes(file.slice(0, 16));
   const ascii = String.fromCharCode(...head.slice(0, 8));
@@ -55,6 +58,7 @@ export async function sniffMimeType(file: Blob): Promise<string | undefined> {
   if (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) return 'image/jpeg';
   if (head[0] === 0x89 && ascii.slice(1, 4) === 'PNG') return 'image/png';
   if (ascii.startsWith('RIFF') && String.fromCharCode(...head.slice(8, 12)) === 'WEBP') return 'image/webp';
+  if (String.fromCharCode(...head.slice(4, 8)) === 'ftyp' && HEIF_BRANDS.has(String.fromCharCode(...head.slice(8, 12)))) return 'image/heif';
   if (head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04) return 'application/zip'; // docx/xlsx/pptx
   if (head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0) return 'application/x-ole'; // doc/xls/ppt
   const text = new TextDecoder().decode(await readBlobBytes(file.slice(0, 512))).trimStart().toLowerCase();
@@ -63,11 +67,9 @@ export async function sniffMimeType(file: Blob): Promise<string | undefined> {
   return undefined;
 }
 
-function kindForExtension(ext: string): AcceptKind | undefined {
-  for (const [kind, map] of Object.entries(ACCEPT_MAP) as [AcceptKind, Record<string, string[]>][]) {
-    if (Object.values(map).some((exts) => exts.includes(ext))) return kind;
-  }
-  return undefined;
+/** The first of the tool's accepted kinds that covers this extension (kinds overlap, e.g. "image" and "jpg"). */
+function kindForExtension(ext: string, kinds: AcceptKind[]): AcceptKind | undefined {
+  return kinds.find((kind) => Object.values(ACCEPT_MAP[kind]).some((exts) => exts.includes(ext)));
 }
 
 export async function validateFile(file: File, kinds: AcceptKind[]): Promise<ValidationResult> {
@@ -77,8 +79,8 @@ export async function validateFile(file: File, kinds: AcceptKind[]): Promise<Val
   }
   if (kinds.includes('any')) return { ok: true };
   const ext = extensionOf(file.name);
-  const kind = kindForExtension(ext);
-  if (!kind || !kinds.includes(kind)) {
+  const kind = kindForExtension(ext, kinds);
+  if (!kind) {
     return { ok: false, error: `"${file.name}" is not a supported format. Accepted: ${acceptLabel(kinds)}.` };
   }
   // Magic byte check where the format allows it.
@@ -88,6 +90,15 @@ export async function validateFile(file: File, kinds: AcceptKind[]): Promise<Val
   }
   if (kind === 'image' && sniffed && !sniffed.startsWith('image/')) {
     return { ok: false, error: `"${file.name}" is not a valid image.` };
+  }
+  if (kind === 'jpg' && sniffed !== 'image/jpeg') {
+    return { ok: false, error: sniffed === 'image/png' ? `"${file.name}" is actually a PNG image. Use PNG to JPG instead.` : `"${file.name}" is not a valid JPG image.` };
+  }
+  if (kind === 'png' && sniffed !== 'image/png') {
+    return { ok: false, error: sniffed === 'image/jpeg' ? `"${file.name}" is actually a JPG image. Use JPG to PNG instead.` : `"${file.name}" is not a valid PNG image.` };
+  }
+  if (kind === 'heic' && sniffed !== 'image/heif') {
+    return { ok: false, error: `"${file.name}" is not a valid HEIC/HEIF image.` };
   }
   if ((kind === 'word' || kind === 'excel' || kind === 'powerpoint') && sniffed === 'application/pdf') {
     return { ok: false, error: `"${file.name}" is actually a PDF. Please use a PDF tool.` };

@@ -25,7 +25,7 @@ import { showSnackbar } from '@/store/slices/uiSlice';
 import { clearPdfInfo, removePdfInfo } from '@/store/slices/pdfSlice';
 import { fileRegistry, outputRegistry } from '@/services/fileRegistry';
 import { clearPdfCache, evictCachedPdf, clearThumbnailCache } from '@/services/pdfjs';
-import { toAppError } from '@/services/api';
+import { toAppError } from '@/services/errors';
 import { saveOutput } from '@/services/storage';
 import { downloadBlob, downloadAllAsZip } from '@/services/download';
 import { toFileMeta, validateFile } from '@/utils/file';

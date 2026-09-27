@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
@@ -10,23 +10,6 @@ import type { ToolResultMeta } from '@/types';
 import CompressPdfTool from './CompressPdfTool';
 import RepairPdfTool from './RepairPdfTool';
 import OcrPdfTool from './OcrPdfTool';
-
-vi.mock('@/services/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/services/api')>();
-  return {
-    ...actual,
-    getServerCapabilities: vi.fn().mockResolvedValue({
-      libreoffice: false,
-      ghostscript: true,
-      qpdf: true,
-      tesseract: true,
-      puppeteer: false,
-      maxFileSizeMb: 50,
-      ocrLanguages: [{ code: 'eng', name: 'English' }],
-      fileTtlMinutes: 60,
-    }),
-  };
-});
 
 function renderTool(Component: ComponentType, store = createAppStore()) {
   const utils = render(
@@ -66,7 +49,7 @@ describe('Optimize PDF tools', () => {
       startedAt: now - 1500,
       finishedAt: now,
       durationMs: 1500,
-      extra: { originalSize: 1000000, compressedSize: 400000, reductionPercent: 60, level: 'medium', engine: 'ghostscript' },
+      extra: { originalSize: 1000000, compressedSize: 400000, reductionPercent: 60, level: 'medium', engine: 'js' },
     };
     act(() => {
       store.dispatch(finishProcessing(meta));
@@ -76,6 +59,7 @@ describe('Optimize PDF tools', () => {
     expect(screen.getByText('Reduced by 60%')).toBeInTheDocument();
     expect(screen.getByText('Original size')).toBeInTheDocument();
     expect(screen.getByText('Compressed size')).toBeInTheDocument();
+    expect(screen.getByText(/Engine: Built-in converter/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Download PDF' })).toBeInTheDocument();
   });
 
@@ -93,7 +77,7 @@ describe('Optimize PDF tools', () => {
           startedAt: now,
           finishedAt: now,
           durationMs: 10,
-          extra: { status: 'healthy', repaired: false, engine: 'qpdf', notes: ['Cross-reference table is intact.'] },
+          extra: { status: 'healthy', repaired: false, engine: 'pdf-lib', notes: ['Cross-reference table is intact.'] },
         }),
       );
     });

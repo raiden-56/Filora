@@ -35,4 +35,9 @@ export const TOOL_COMPONENTS: Record<string, LazyExoticComponent<ComponentType>>
   crop: lazy(() => import('./edit/CropPdfTool')),
   edit: lazy(() => import('./edit/EditPdfTool')),
   forms: lazy(() => import('./edit/PdfFormsTool')),
+  // Image tools
+  'heic-to-jpg': lazy(() => import('./image/HeicToJpgTool')),
+  'heif-to-jpg': lazy(() => import('./image/HeifToJpgTool')),
+  'jpg-to-png': lazy(() => import('./image/JpgToPngTool')),
+  'png-to-jpg': lazy(() => import('./image/PngToJpgTool')),
 };

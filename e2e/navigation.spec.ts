@@ -7,7 +7,7 @@ test.describe('Navigation and discovery', () => {
     await expect(page.getByRole('link', { name: 'Choose a PDF Tool' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Convert JPG to PDF' })).toBeVisible();
     await expect(page.getByRole('button', { name: /Drop your files here/ })).toBeVisible();
-    for (const cat of ['Organize PDF', 'Optimize PDF', 'Convert to PDF', 'Convert from PDF', 'Edit PDF']) {
+    for (const cat of ['Organize PDF', 'Optimize PDF', 'Convert to PDF', 'Convert from PDF', 'Edit PDF', 'Image Tools']) {
       await expect(page.getByRole('heading', { name: cat, level: 3 })).toBeVisible();
     }
     // No horizontal overflow
@@ -18,7 +18,7 @@ test.describe('Navigation and discovery', () => {
   test('all tools page lists every tool grouped by category', async ({ page }) => {
     await page.goto('/tools');
     await expect(page.getByRole('heading', { name: 'All PDF Tools' })).toBeVisible();
-    const names = ['Merge PDF', 'Split PDF', 'Remove Pages', 'Extract Pages', 'Organize PDF', 'Scan to PDF', 'Compress PDF', 'Repair PDF', 'OCR PDF', 'JPG to PDF', 'Word to PDF', 'PowerPoint to PDF', 'Excel to PDF', 'HTML to PDF', 'PDF to JPG', 'PDF to Word', 'PDF to PowerPoint', 'PDF to Excel', 'PDF to PDF/A', 'Rotate PDF', 'Page Numbers', 'Watermark', 'Crop PDF', 'Edit PDF', 'PDF Forms'];
+    const names = ['Merge PDF', 'Split PDF', 'Remove Pages', 'Extract Pages', 'Organize PDF', 'Scan to PDF', 'Compress PDF', 'Repair PDF', 'OCR PDF', 'JPG to PDF', 'Word to PDF', 'PowerPoint to PDF', 'Excel to PDF', 'HTML to PDF', 'PDF to JPG', 'PDF to Word', 'PDF to PowerPoint', 'PDF to Excel', 'PDF to PDF/A', 'Rotate PDF', 'Page Numbers', 'Watermark', 'Crop PDF', 'Edit PDF', 'PDF Forms', 'HEIC to JPG', 'HEIF to JPG', 'JPG to PNG', 'PNG to JPG'];
     for (const n of names) await expect(page.getByRole('link', { name: new RegExp(`^${n.replace(/[/]/g, '\\/')}:`) })).toBeVisible();
     await page.getByLabel('Filter tools').fill('compress');
     await expect(page.getByRole('link', { name: /^Compress PDF:/ })).toBeVisible();
