@@ -11,12 +11,9 @@ export interface ToolSidebarProps {
   currentToolId?: string;
 }
 
-/** Distance from the top of the viewport: the 64px app bar plus a 16px gap. */
-const STICKY_TOP = 80;
-
 /**
- * Vertical list of tools (desktop side navigation on tool pages). It sticks below the app bar
- * and scrolls on its own, so the page height follows the tool content, not this menu.
+ * Vertical list of tools (desktop side navigation on tool pages). It fills the height of its
+ * column and scrolls on its own, independently of the tool content next to it.
  */
 export default function ToolSidebar({ category, currentToolId }: ToolSidebarProps) {
   const theme = useTheme();
@@ -40,13 +37,12 @@ export default function ToolSidebar({ category, currentToolId }: ToolSidebarProp
       ref={navRef}
       aria-label="Tools"
       sx={{
-        position: 'sticky',
-        top: STICKY_TOP,
-        maxHeight: `calc(100vh - ${STICKY_TOP + 16}px)`,
+        height: '100%',
         overflowY: 'auto',
         // Scrolling the menu never scrolls the page behind it.
         overscrollBehavior: 'contain',
-        pr: 0.5,
+        px: 1.5,
+        py: 2,
         scrollbarWidth: 'thin',
         scrollbarColor: `${alpha(theme.palette.text.primary, 0.2)} transparent`,
         '&::-webkit-scrollbar': { width: 6 },
@@ -71,7 +67,6 @@ export default function ToolSidebar({ category, currentToolId }: ToolSidebarProp
           ))}
         </List>
       ))}
-      <Box sx={{ mt: 1, borderTop: 1, borderColor: theme.palette.divider }} />
     </Box>
   );
 }

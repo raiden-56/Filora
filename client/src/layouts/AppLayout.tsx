@@ -1,8 +1,7 @@
 import { Box, LinearProgress } from '@mui/material';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
-import AppFooter from '@/components/AppFooter';
 import AppSnackbar from '@/components/AppSnackbar';
 import GlobalSearch from '@/components/GlobalSearch';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -14,6 +13,7 @@ export default function AppLayout() {
   const location = useLocation();
   const settings = useAppSelector((s) => s.settings);
   const loaded = useAppSelector((s) => s.history.loaded);
+  const mainRef = useRef<HTMLElement>(null);
 
   // Hydrate My Files and purge expired entries.
   useEffect(() => {
@@ -27,23 +27,23 @@ export default function AppLayout() {
     })().catch(() => dispatch(hydrateHistory([])));
   }, [dispatch, loaded, settings.autoDeleteFiles, settings.autoDeleteAfterHours]);
 
-  // Scroll to top on navigation.
+  // Scroll to top on navigation (the page itself never scrolls; <main> does).
   useEffect(() => {
-    window.scrollTo({ top: 0 });
+    if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [location.pathname]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    // App shell: the header stays fixed and only the content below it scrolls.
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', '@supports (height: 100dvh)': { height: '100dvh' }, overflow: 'hidden' }}>
       <Box component="a" href="#main" sx={{ position: 'absolute', left: -9999, '&:focus': { left: 16, top: 8, zIndex: 2000, bgcolor: 'background.paper', p: 1, borderRadius: 1 } }}>
         Skip to content
       </Box>
       <AppHeader />
-      <Box component="main" id="main" sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <Box component="main" id="main" ref={mainRef} sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
         <Suspense fallback={<LinearProgress aria-label="Loading page" />}>
           <Outlet />
         </Suspense>
       </Box>
-      <AppFooter />
       <AppSnackbar />
       <GlobalSearch />
     </Box>

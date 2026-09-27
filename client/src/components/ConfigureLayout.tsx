@@ -22,9 +22,13 @@ export interface ConfigureLayoutProps {
   backLabel?: string;
 }
 
+/** Space kept above and below the pinned options panel (px). */
+const PANEL_GAP = 16;
+
 /**
- * Two-column layout for the "Customize" step: main content + sticky options panel with the
- * primary action. Collapses to a single column with a sticky bottom action bar on mobile.
+ * Two-column layout for the "Customize" step: main content + a pinned options panel. On desktop
+ * the panel never scrolls away: long options scroll inside it while the primary action stays
+ * visible at its bottom. Collapses to a single column with a sticky bottom action bar on mobile.
  */
 export default function ConfigureLayout({
   children,
@@ -63,19 +67,29 @@ export default function ConfigureLayout({
   return (
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: 'flex-start' }}>
       <Box sx={{ flex: 1, minWidth: 0, width: '100%' }}>{children}</Box>
-      <Box component="aside" aria-label={optionsTitle} sx={{ width: { xs: '100%', md: 320 }, flexShrink: 0, position: { md: 'sticky' }, top: { md: 88 } }}>
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
+      <Box
+        component="aside"
+        aria-label={optionsTitle}
+        sx={{
+          width: { xs: '100%', md: 320 },
+          flexShrink: 0,
+          position: { md: 'sticky' },
+          top: { md: PANEL_GAP },
+          // Fit the visible content pane: viewport minus the 64px app bar and the gaps.
+          maxHeight: { md: `calc(100dvh - ${64 + PANEL_GAP * 2}px)` },
+          display: 'flex',
+        }}
+      >
+        <Paper variant="outlined" sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {options && (
-            <>
+            <Box sx={{ p: 2.5, pb: mobile ? 2.5 : 2, overflowY: { md: 'auto' }, flex: '1 1 auto', minHeight: 0, overscrollBehavior: 'contain' }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
                 {optionsTitle}
               </Typography>
-              <Stack spacing={2.5} sx={{ mb: 3 }}>
-                {options}
-              </Stack>
-            </>
+              <Stack spacing={2.5}>{options}</Stack>
+            </Box>
           )}
-          {!mobile && actionBlock}
+          {!mobile && <Box sx={{ p: 2.5, pt: 2, flexShrink: 0, borderTop: options ? 1 : 0, borderColor: 'divider' }}>{actionBlock}</Box>}
         </Paper>
       </Box>
       {mobile && (

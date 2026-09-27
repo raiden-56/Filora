@@ -1,7 +1,7 @@
 import { Box, Button, Chip, Container, Stack, Typography, alpha } from '@mui/material';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import type { ToolWorkflow as Workflow } from '@/hooks/useToolWorkflow';
 import { CATEGORY_BY_ID, categoryPath } from '@/constants/tools';
@@ -55,6 +55,13 @@ export default function ToolWorkflow({
 }: ToolWorkflowProps) {
   const { tool, step, stage, progress, error, result } = workflow;
   const category = CATEGORY_BY_ID[tool.category];
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const showSidebar = !hideSidebar && !wide;
+
+  // Each step starts at the top of the content pane.
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [step]);
 
   const content = (
     <>
@@ -111,16 +118,16 @@ export default function ToolWorkflow({
     </>
   );
 
+  // Fills the app shell below the header: the tool menu and the tool content scroll independently.
   return (
-    <Container maxWidth={wide ? 'xl' : 'lg'} sx={{ py: { xs: 2.5, sm: 4 } }}>
-      <Box sx={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
-        {!hideSidebar && !wide && (
-          // Stretch to the full column height so the sticky menu inside has room to stay in place.
-          <Box sx={{ width: 240, flexShrink: 0, alignSelf: 'stretch', display: { xs: 'none', lg: 'block' } }}>
-            <ToolSidebar currentToolId={tool.id} />
-          </Box>
-        )}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+    <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
+      {showSidebar && (
+        <Box sx={{ width: 256, flexShrink: 0, display: { xs: 'none', lg: 'block' }, borderRight: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
+          <ToolSidebar currentToolId={tool.id} />
+        </Box>
+      )}
+      <Box ref={scrollRef} sx={{ flex: 1, minWidth: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+        <Container maxWidth={wide ? 'xl' : 'lg'} sx={{ py: { xs: 2.5, sm: 3 } }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
             <Button component={RouterLink} to={categoryPath(category)} size="small" color="inherit" startIcon={<ArrowBackRoundedIcon />} sx={{ color: 'text.secondary', ml: -1 }}>
               {category.name}
@@ -148,8 +155,8 @@ export default function ToolWorkflow({
           </Box>
           <StepIndicator step={step} labels={stepLabels} />
           {content}
-        </Box>
+        </Container>
       </Box>
-    </Container>
+    </Box>
   );
 }

@@ -74,7 +74,7 @@ export default function AppHeader() {
 
   return (
     <>
-      <AppBar position="sticky" component="header">
+      <AppBar position="static" component="header">
         <Container maxWidth="xl" disableGutters sx={{ px: { xs: 1.5, sm: 3 } }}>
           <Toolbar disableGutters sx={{ gap: 1, minHeight: { xs: 56, sm: 64 } }}>
             <IconButton edge="start" aria-label="Open navigation menu" onClick={() => dispatch(setNavDrawerOpen(true))} sx={{ display: { lg: 'none' } }}>
